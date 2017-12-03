@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.basepom</groupId>
+    <artifactId>basepom-minimal</artifactId>
+    <version>25</version>
+  </parent>
+
+  <groupId>com.zbiljic</groupId>
+  <artifactId>tha</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+
+  <name>Tomcat Header Agent</name>
+  <url>https://github.com/zbiljic/tomcat-header-agent</url>
+
+  <inceptionYear>2017</inceptionYear>
+
+  <licenses>
+    <license>
+      <name>Apache License 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+      <comments>A business-friendly OSS license</comments>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>zbiljic</id>
+      <name>Nemanja Zbiljić</name>
+      <timezone>+1</timezone>
+      <url>https://github.com/zbiljic</url>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:git@github.com:zbiljic/tomcat-header-agent.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/zbiljic/tomcat-header-agent.git</developerConnection>
+    <url>https://github.com/zbiljic/tomcat-header-agent</url>
+    <tag>HEAD</tag>
+  </scm>
+
+  <issueManagement>
+    <system>GitHub</system>
+    <url>http://github.com/zbiljic/tomcat-header-agent/issues</url>
+  </issueManagement>
+
+  <properties>
+    <!-- Project options -->
+    <project.build.targetJdk>1.7</project.build.targetJdk>
+    <basepom.release.tag-name-format>v@{project.version}</basepom.release.tag-name-format>
+    <!-- Dependencies -->
+    <dep.slf4j.version>1.7.25</dep.slf4j.version>
+    <dep.byte-buddy.version>1.7.9</dep.byte-buddy.version>
+    <dep.tomcat.version>8.5.23</dep.tomcat.version>
+    <dep.testng.version>6.11</dep.testng.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+
+      <!-- logging -->
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>${dep.slf4j.version}</version>
+      </dependency>
+
+      <!-- Byte buddy -->
+      <dependency>
+        <groupId>net.bytebuddy</groupId>
+        <artifactId>byte-buddy</artifactId>
+        <version>${dep.byte-buddy.version}</version>
+      </dependency>
+
+      <!-- Tomcat -->
+      <dependency>
+        <groupId>org.apache.tomcat</groupId>
+        <artifactId>tomcat-catalina</artifactId>
+        <version>${dep.tomcat.version}</version>
+      </dependency>
+
+      <!-- Testing -->
+      <dependency>
+        <groupId>org.testng</groupId>
+        <artifactId>testng</artifactId>
+        <version>${dep.testng.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.google.inject</groupId>
+            <artifactId>guice</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+
+    <dependency>
+      <groupId>net.bytebuddy</groupId>
+      <artifactId>byte-buddy</artifactId>
+      <optional>true</optional><!-- in order to be included in 'shaded' jar -->
+    </dependency>
+
+    <!-- Tomcat instrumentation -->
+
+    <dependency>
+      <groupId>org.apache.tomcat</groupId>
+      <artifactId>tomcat-catalina</artifactId>
+      <optional>true</optional>
+    </dependency>
+
+    <!-- Testing -->
+    <dependency>
+      <groupId>org.testng</groupId>
+      <artifactId>testng</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+    <plugins>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <!-- check this link to understand why: https://issues.apache.org/jira/browse/MCOMPILER-97 -->
+          <compilerArgument>-proc:none</compilerArgument>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive combine.self="override">
+            <manifest>
+              <addClasspath>false</addClasspath>
+              <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+              <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+            </manifest>
+            <manifestEntries>
+              <Premain-Class>com.zbiljic.tha.Agent</Premain-Class>
+              <Agent-Class>com.zbiljic.tha.Agent</Agent-Class>
+              <Can-Redefine-Classes>true</Can-Redefine-Classes>
+              <Can-Retransform-Classes>true</Can-Retransform-Classes>
+            </manifestEntries>
+            <manifestSections>
+              <manifestSection>
+                <name>${project.groupId}:${project.artifactId}</name>
+                <manifestEntries>
+                  <!-- project information -->
+                  <Project-ArtifactId>${project.artifactId}</Project-ArtifactId>
+                  <Project-GroupId>${project.groupId}</Project-GroupId>
+                  <Project-Name>${project.name}</Project-Name>
+                  <Project-Version>${project.version}</Project-Version>
+                </manifestEntries>
+              </manifestSection>
+            </manifestSections>
+          </archive>
+        </configuration>
+        <executions>
+          <!-- Disable building test jar -->
+          <execution>
+            <id>attach-tests</id>
+            <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <executions>
+          <!-- Disable building test-sources jar -->
+          <execution>
+            <id>attach-sources</id>
+            <phase>none</phase>
+          </execution>
+          <execution>
+            <id>attach-jar-sources</id>
+            <phase>package</phase>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>findbugs-maven-plugin</artifactId>
+        <configuration>
+          <excludeFilterFile>findbugs-exclude.xml</excludeFilterFile>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <finalName>${project.artifactId}-javaagent</finalName>
+              <artifactSet>
+                <includes>
+                  <include>net.bytebuddy:byte-buddy</include>
+                </includes>
+              </artifactSet>
+              <relocations>
+                <relocation>
+                  <pattern>net.bytebuddy.</pattern>
+                  <shadedPattern>com.zbiljic.tha.repackaged.net.bytebuddy.</shadedPattern>
+                </relocation>
+              </relocations>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+    </plugins>
+  </build>
+
+</project>
